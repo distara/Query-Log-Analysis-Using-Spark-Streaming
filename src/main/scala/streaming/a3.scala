@@ -54,9 +54,8 @@ object a3 {def main(args: Array[String]): Unit = {
 
 
   sortedCounts.print()
+  records.saveAsTextFiles("hdfs:///output/task1", "")
   ssc.start()
   ssc.awaitTermination()
-
-  records.saveAsTextFiles("hdfs:///output")
   }
 }
