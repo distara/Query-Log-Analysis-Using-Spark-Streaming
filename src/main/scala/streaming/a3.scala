@@ -46,8 +46,12 @@ object a3 {def main(args: Array[String]): Unit = {
   val pairs = queryText.map(x => (x, 1)).reduceByKey(_ + _)
   val wordCounts = pairs.updateStateByKey(updateFunction)
 
+  //Sorting the word counts
+  // Landei https://stackoverflow.com/questions/4793490/scala-map-sorting
+  val sortedCounts = wordCounts.transform(rdd => rdd.sortBy{case (word, count) => (-count, word)})
 
-  wordCounts.print()
+
+  sortedCounts.print()
   ssc.start()
   ssc.awaitTermination()
 
