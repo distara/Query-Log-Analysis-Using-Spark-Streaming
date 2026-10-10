@@ -17,6 +17,8 @@ object a3 {def main(args: Array[String]): Unit = {
 
   // Create the FileInputDStream on the directory
   val lines = ssc.textFileStream(args(0))
+  val linesNoHeader = lines.filter {line =>
+    !line.startsWith("query_id,user_id,query_text,event_time,device,result_count,response_time_ms")}
 
   // Cleaning function which is used for creating records
   // https://www.baeldung.com/scala/string-delete-special-characters
@@ -27,7 +29,7 @@ object a3 {def main(args: Array[String]): Unit = {
       .filterNot(stopWords.contains).mkString(" ")}
 
   // stream to count words in third column created (query text)
-  val records = lines.map {line => val columns = line.split(',')
+  val records = linesNoHeader.map {line => val columns = line.split(',')
     (columns(0), columns(1), textCleaning(columns(2)),
       columns(3),
       columns(4), columns(5), columns(6))}
