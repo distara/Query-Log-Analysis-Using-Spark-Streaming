@@ -87,10 +87,15 @@ object a3 {def main(args: Array[String]): Unit = {
       }
     }
 
-  // Saving Task 3
+  // Task 3
   accumulatedStatistics.foreachRDD(Rdd =>
   if (!emptyBatch){
-    Rdd.saveAsTextFile(f"$outputDir/task3-$batchNumber%03d")
+    // maps (to remove from tuple) and then sorts
+    val sortedStatistics = Rdd.map{case (query, (a, b, c, d, e)) => (query, a, b, c, d, e)}
+      .sortBy{case (query, current_batch_count, previous_accumulated_count, accumulated_count, count_change, trend_status)
+    => ( -accumulated_count, -current_batch_count, query)}
+
+    sortedStatistics.saveAsTextFile(f"$outputDir/task3-$batchNumber%03d")
     batchNumber += 1
   })
 
@@ -100,4 +105,6 @@ object a3 {def main(args: Array[String]): Unit = {
   }
 }
 
-// Note: figure out how to remove brackets
+// Note: make sure to map task 1 and 2
+// Note: output has brackets around it for tasks (spark streaming,0,1,1,0,UNCHANGED)
+// Remove prints
