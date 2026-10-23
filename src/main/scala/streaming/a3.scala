@@ -78,6 +78,9 @@ object a3 {def main(args: Array[String]): Unit = {
       // Landei https://stackoverflow.com/questions/4793490/scala-map-sorting
       val sortedCounts = Rdd.map(x => (x._3, 1)).reduceByKey(_ + _)
         .sortBy{case (word, count) => (-count, word)}
+        // remove brackets by making it into a string
+        // https://docs.scala-lang.org/overviews/collections/iterators.html
+        .map(_.productIterator.mkString(","))
 
 
       // Task 2
@@ -134,7 +137,7 @@ object a3 {def main(args: Array[String]): Unit = {
       }.sortBy{case
           (cleaned_query, slow_query_count, max_response_time, _, _, severity_level) =>
           (severity_level, -max_response_time, -slow_query_count, cleaned_query)}
-      }
+      }.map(_.productIterator.mkString(","))
 
 
 
@@ -154,6 +157,7 @@ object a3 {def main(args: Array[String]): Unit = {
         => ( -accumulated_count, -current_batch_count, query)}.take(10)
 
       Rdd.sparkContext.parallelize(sortedStatistics.toSeq, 1)
+        .map(_.productIterator.mkString(","))
         .saveAsTextFile(f"$outputDir/task3-$batchNumber%03d")
       batchNumber += 1
     })
