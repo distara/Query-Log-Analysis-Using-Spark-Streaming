@@ -3,16 +3,16 @@ import org.apache.spark.SparkConf
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 
 object a3 {def main(args: Array[String]): Unit = {
+
+  // Check the three required command-line arguments
   if (args.length < 3) {
     System.err.println("Usage: Assignment3 <input_directory><output_directory><query_threshold>")
     System.exit(1)
   }
 
-  //StreamingExamples.setStreamingLogLevels()
+  // Create the streaming context with a 3-second batch interval
   val sparkConf = new SparkConf().setAppName("Assignment3")
-  // Creating the streaming context
   val ssc = new StreamingContext(sparkConf, Seconds(3))
-
   ssc.checkpoint("hdfs:///s4216579/checkpoint")
 
   // Create the FileInputDStream on the directory
@@ -25,17 +25,15 @@ object a3 {def main(args: Array[String]): Unit = {
       !line.startsWith("query_id,user_id,query_text,event_time,device,result_count,response_time_ms"))
     .filter(line => line.split(",", -1).length >=7)
 
-  // Cleaning function
-  // https://www.baeldung.com/scala/string-delete-special-characters
+  // Cleaning function (Krishnan, 2024)
   val stopWords = List("the", "and", "for", "with", "how", "what", "why", "can", "you", "use", "using")
   def textCleaning(text: String): String = {
     text.toLowerCase.replaceAll("[^a-zA-Z0-9 ]", "")
       .split(" ").filter(_.nonEmpty).filter(_.length >=3)
       .filterNot(stopWords.contains).mkString(" ")}
 
-  // stream to count cleaned queries in third column created (query text)
+  // Sw tream to count cleaned queries in third column created (Sparking Scala, 2024)
   // Note: the index in split(..., -1) means it allows for some columns in this split to be empty
-  // https://sparkingscala.com/examples/split
   val records = linesNoHeader.map {line => val columns = line.split(",", -1)
     (columns(0), columns(1),
       textCleaning(columns(2)), columns(3),
@@ -65,8 +63,7 @@ object a3 {def main(args: Array[String]): Unit = {
   val accumulatedStatistics = pairs.updateStateByKey[(Int, Int, Int, Int, String)](updateFunction)
 
 
-  // Task saves for non-empty batches
-  // ref https://stackoverflow.com/questions/29134612/in-spark-streaming-how-to-detect-for-an-empty-batch
+  // Task saves for non-empty batches (Thakur, 2019)
   var batchNumber = 1
   var emptyBatch = true
 
@@ -74,12 +71,10 @@ object a3 {def main(args: Array[String]): Unit = {
     emptyBatch = Rdd.isEmpty()
 
     if (!emptyBatch){
-      // Task 1 - sorting the word counts
-      // Landei https://stackoverflow.com/questions/4793490/scala-map-sorting
+      // Task 1 - sorting the word counts (Landei, 2011)
       val sortedCounts = Rdd.map(x => (x._3, 1)).reduceByKey(_ + _)
         .sortBy{case (word, count) => (-count, word)}
-        // remove brackets by making it into a string
-        // https://docs.scala-lang.org/overviews/collections/iterators.html
+        // remove brackets by making it into a string (Scala, 2025)
         .map(_.productIterator.mkString(","))
 
 
@@ -104,7 +99,6 @@ object a3 {def main(args: Array[String]): Unit = {
         (query_text, (frequency, time_total, max_time, slow_query_count, affected_users))}
 
       // Aggregating by Query
-      // query_frequency, time_total, max_response_time, # here is, slow_query_count
       val aggregatedQuery = byQuery.reduceByKey { (a, b) =>
         (a._1 + b._1,     // query frequency
           a._2 + b._2,    // total response time
@@ -120,7 +114,7 @@ object a3 {def main(args: Array[String]): Unit = {
         }.map{ case
           (cleaned_query, (query_frequency, time_total, max_response_time, slow_query_count, affected_users)) =>
           val average_response_time_unformatted = time_total.toDouble / query_frequency
-          // 2 decimal place format https://www.baeldung.com/scala/number-formats
+          // 2 decimal place format (Rijo, 2024)
           val average_response_time_ms = f"$average_response_time_unformatted%.2f"
           val severity_level  = if (max_response_time >= queryThresh * 2) "CRITICAL"
           else "WARNING"
@@ -162,21 +156,15 @@ object a3 {def main(args: Array[String]): Unit = {
       batchNumber += 1
     })
 
-  accumulatedStatistics.print()
   ssc.start()
   ssc.awaitTermination()
 }
 }
 
-// Note: make sure to map task 1 and 2
-// Note: output has brackets around it for tasks (spark streaming,0,1,1,0,UNCHANGED)
-// Remove prints
-// Check top 10 works
-
-
-// OLD
-// Task 2
-//val slowQuery = Rdd.filter(x => x._7.toFloat > queryThresh)
-
-//
-//val slow_query_count = slowQuery.map(x => (x._3, 1)).reduceByKey(_ + _)
+// References
+// Krishnan, Y. (2024, April 25). Remove special characters from a string in Scala. Baeldung on Scala. https://www.baeldung.com/scala/string-delete-special-characters
+// Landei. (2011, January 25). Scala map sorting. Stack Overflow. https://stackoverflow.com/questions/4793490/scala-map-sorting
+// Rijo, P. (2024, September 4). Different ways to format numbers in Scala. Baeldung on Scala. https://www.baeldung.com/scala/number-formats
+// Scala. (2025). Iterators. Scala Documentation. https://docs.scala-lang.org/overviews/collections/iterators.html
+// Sparking Scala. (2024). Split function: Split strings into arrays in spark scala DataFrames. Sparkingscala.Com. https://sparkingscala.com/examples/split/
+// Thakur, S. (2019, August 30). In Spark Streaming, how to detect for an empty batch? . Stack Overflow. https://stackoverflow.com/questions/29134612/in-spark-streaming-how-to-detect-for-an-empty-batch
